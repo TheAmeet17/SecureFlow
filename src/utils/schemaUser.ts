@@ -6,8 +6,8 @@ export const createUserSchema = z.object({
   name: z
     .string()
     .min(3, 'Name must be at least 3 characters long') // Minimum length of 3 characters
-    .max(20, 'Name must be at most 20 characters long') // Maximum length of 20 characters
-    .regex(/^[a-zA-Z0-9]+$/, 'Name can only contain alphanumeric characters') // Alphanumeric validation
+    .max(50, 'Name must be at most 50 characters long') // Maximum length of 50 characters
+    .regex(/^[a-zA-Z\s]+$/, 'Name can only contain letters and spaces') // Alphanumeric + space validation
     .nonempty('Name is required'), // Field is required
 
   email: z

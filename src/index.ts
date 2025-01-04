@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import userRouter from './routes/user.router'
 import authRouter from './routes/auth.router';
-const PORT = 8030;
+const PORT = 8040;
 import dotenv from 'dotenv';
 import { errorHandler } from './middleware/errorHandler';
 const app = express();
