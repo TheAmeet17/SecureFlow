@@ -1,11 +1,11 @@
-import { Request, Response } from "express";
+import { Request, Response ,NextFunction} from "express";
 import { PrismaClient } from "@prisma/client";
 import prisma from "../connect/prisma";
 import { createAccessToken } from "../jwt/token";
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import { sendResetPasswordEmail } from "../utils/nodemailer";
-
+import { AppError } from '../utils/appError';
 const prismaClient = new PrismaClient(); // Using lowercase 'prismaClient'
 
 //Validates the user's input.
@@ -15,14 +15,13 @@ const prismaClient = new PrismaClient(); // Using lowercase 'prismaClient'
 // Provides special handling for the first user.
 // Returns a success response or an error.
 
-
-export const signupUser = async (req: Request, res: Response): Promise<void> => {
+export const signupUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { name, email, password } = req.body;
 
     // Validate the input
     if (!name || !email || !password) {
-        res.status(400).json({ message: 'Name, email, and password are required.' });
-        ;
+        // Instead of directly returning a response, pass an error to next()
+        return next(new AppError('Name, email, and password are required.', 400));
     }
 
     try {
@@ -73,12 +72,15 @@ export const signupUser = async (req: Request, res: Response): Promise<void> => 
                     : `Hello ${name}, your account has been created and is awaiting admin approval.`,
         });
     } catch (error) {
-        console.error('Error creating user:', error);
-        res.status(500).json({ message: 'An error occurred while creating the user.' });
+        // Instead of directly logging the error, pass it to next()
+        return next(new AppError('An error occurred while creating the user.', 500));
     } finally {
         await prisma.$disconnect();
     }
 };
+
+console.log("hello");
+console.log(signupUser);
 
 
 export const loginUser = async (req: Request, res: Response): Promise<void> => {
@@ -100,6 +102,7 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
             res.status(404).json({ message: 'User not found' });
             return;
         }
+
         // Compare the entered password with the stored hashed password
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
