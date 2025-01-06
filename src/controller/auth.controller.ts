@@ -82,36 +82,32 @@ export const signupUser = async (req: Request, res: Response, next: NextFunction
 console.log("hello");
 console.log(signupUser);
 
-
-export const loginUser = async (req: Request, res: Response): Promise<void> => {
+export const loginUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { email, password } = req.body;
 
     // Validate the input
     if (!email || !password) {
-        res.status(400).json({ message: 'Email and password are required' });
-        return;
+        return next(new AppError('Email and password are required', 400));
     }
 
     try {
-        // Find the user by email (using email as a unique identifier)
+        // Find the user by email
         const user = await prisma.user.findUnique({
-            where: { email: email }, // Correct usage of email as the unique identifier
+            where: { email: email },
         });
 
         if (!user) {
-            res.status(404).json({ message: 'User not found' });
-            return;
+            return next(new AppError('User not found', 404));
         }
 
         // Compare the entered password with the stored hashed password
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
-            res.status(401).json({ message: 'Invalid password' });
-            return;
+            return next(new AppError('Invalid password', 401));
         }
 
         // Generate JWT token upon successful login
-        const token = createAccessToken(user.id, user.email, user.role); // Added role
+        const token = createAccessToken(user.id, user.email, user.role);
 
         // Send success response with token
         res.status(200).json({
@@ -120,34 +116,33 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
                 id: user.id,
                 name: user.name,
                 email: user.email,
-                role: user.role, // Include role in the response
+                role: user.role,
             },
-            token, // Send the JWT token
+            token,
         });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error logging in' });
+        // Pass any unexpected errors to the error handler middleware
+        next(new AppError('An error occurred while logging in', 500));
     } finally {
         await prisma.$disconnect(); // Ensure disconnection from the Prisma client
     }
 };
 
-export const logoutUser = async (req: Request, res: Response): Promise<void> => {
+console.log("hello")
+export const logoutUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         // Assuming you're using JWT stored in a cookie
         res.clearCookie('access_token'); // Clear the access token cookie (if stored in cookies)
-    
-        // Optionally, you can send a response confirming logout
+
+        // Send a response confirming logout
         res.status(200).json({
             message: 'Logout successful',
         });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error logging out' });
+        // Pass the error to the error handler middleware
+        next(new AppError('Error logging out', 500));
     }
 };
-
-
 //ysko aalik baki xa code milauna
 export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
     const { email } = req.body;

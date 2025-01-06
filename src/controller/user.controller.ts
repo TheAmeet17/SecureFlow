@@ -1,20 +1,21 @@
 import { NextFunction, Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import { createAccessToken } from "../jwt/token";
+import { AppError } from "../utils/appError";
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient(); // Initialize PrismaClient instance
 
 // Admins use this function to create new users.
 //
-export const createUser = async (req: Request, res: Response): Promise<void> => {
+
+export const createUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { name, email, password } = req.body;
 
         // Validate input fields
         if (!name || !email || !password) {
-            res.status(400).json({ message: 'Name, email, and password are required' });
-            return;
+            return next(new AppError('Name, email, and password are required', 400));
         }
 
         // Check if the email already exists
@@ -23,8 +24,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
         });
 
         if (existingUser) {
-            res.status(400).json({ message: 'Email is already registered' });
-            return;
+            return next(new AppError('Email is already registered', 400));
         }
 
         // Hash the password
@@ -46,62 +46,57 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
             data: newUser,
         });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Failed to create user' });
+        // If any error occurs, pass it to the error handler
+        return next(new AppError('Failed to create user', 500));
     }
 };
 
-export const approveUser = async (req: Request, res: Response): Promise<void> => {
+export const approveUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { userId } = req.params;
-      const { role } = req.body;
-  
-      const user = await prisma.user.findUnique({
-        where: { id: Number(userId) },
-      });
-  
-      if (!user) {
-        res.status(404).json({ message: 'User not found' });
-        return;
-      }
-      console.log(role)
-  
-      if ( typeof(user.isApproved) === 'boolean' &&  user.isApproved) {
-        res.status(400).json({ message: 'User is already approved' });
-        return;
-      }
-  
-      const approvedUser = await prisma.user.update({
-        where: { id: Number(userId) },
-        data: {
-          isApproved : true,
-          role: role || 'user',
-        },
-      });
-  
-      res.status(200).json({
-        message: 'User approved and role assigned successfully',
-        data: approvedUser,
-      });
+        const { userId } = req.params;
+        const { role } = req.body;
+
+        const user = await prisma.user.findUnique({
+            where: { id: Number(userId) },
+        });
+
+        if (!user) {
+            return next(new AppError('User not found', 404));
+        }
+
+        if (typeof user.isApproved === 'boolean' && user.isApproved) {
+            return next(new AppError('User is already approved', 400));
+        }
+
+        const approvedUser = await prisma.user.update({
+            where: { id: Number(userId) },
+            data: {
+                isApproved: true,
+                role: role || 'user',
+            },
+        });
+
+        res.status(200).json({
+            message: 'User approved and role assigned successfully',
+            data: approvedUser,
+        });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Failed to approve user' });
+        // If any error occurs, pass it to the error handler
+        return next(new AppError('Failed to approve user', 500));
     }
-  };
+};
 /**
  * Fetch users with specific username and count total users
  */
 
-export const getUser = async (req: Request, res: Response): Promise<void> => {
+export const getUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         // Get the 'name' query parameter (if available)
         const { name } = req.query;
 
         if (!name) {
-            // If no 'name' is provided, return an error response
-             res.status(400).json({
-                message: "Name parameter is required",
-            });
+            // If no 'name' is provided, return an error using AppError
+            return next(new AppError("Name parameter is required", 400));
         }
 
         // Find users with the provided name
@@ -110,10 +105,8 @@ export const getUser = async (req: Request, res: Response): Promise<void> => {
         });
 
         if (users.length === 0) {
-            // If no users found, send 404 response
-             res.status(404).json({
-                message: `No users found with the name: ${name}`,
-            });
+            // If no users found, send 404 response using AppError
+            return next(new AppError(`No users found with the name: ${name}`, 404));
         }
 
         // Get the total user count
@@ -126,25 +119,19 @@ export const getUser = async (req: Request, res: Response): Promise<void> => {
             data: users,
         });
     } catch (error: any) {
-        // Handle any other errors
-        res.status(500).json({
-            message: "An error occurred while fetching users",
-            error: error.message,
-        });
+        // Handle any other errors and pass them through AppError
+        return next(new AppError("An error occurred while fetching users", 500));
     }
 };
 // /**
 //  * Update user by ID with new details
 //  */
-
-export const updateUser = async (req: Request, res: Response): Promise<void> => {
+export const updateUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { id, name, password, email } = req.body; // Ensure `id` is part of the request body
 
     if (!id) {
-        res.status(400).json({
-            message: "User ID is required",
-        });
-        return;
+        // Return error using AppError
+        return next(new AppError("User ID is required", 400));
     }
 
     try {
@@ -154,10 +141,8 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
         });
 
         if (!user) {
-            res.status(404).json({
-                message: "User not found",
-            });
-            return;
+            // Return error using AppError
+            return next(new AppError("User not found", 404));
         }
 
         // Update the user
@@ -171,21 +156,19 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
             data: updatedUser,
         });
     } catch (error: any) {
-        res.status(500).json({
-            message: "Failed to update user",
-            error: error.message,
-        });
+        // Pass the error to AppError and forward to errorHandler
+        return next(new AppError("Failed to update user", 500,));
     }
 };
-/**
- * Delete user by ID
- */export const deleteUser = async (req: Request, res: Response): Promise<void> => {
+
+
+export const deleteUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { email } = req.body;
 
     // Validate the input
     if (!email) {
-        res.status(400).json({ message: 'Email is required' });
-        return;
+        // Return error using AppError
+        return next(new AppError('Email is required', 400));
     }
 
     try {
@@ -204,8 +187,8 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
             },
         });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error deleting user' });
+        // Pass the error to AppError and forward to errorHandler
+        return next(new AppError('Error deleting user', 500,));
     } finally {
         await prisma.$disconnect(); // Disconnect Prisma client
     }

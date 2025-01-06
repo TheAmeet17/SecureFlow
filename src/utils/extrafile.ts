@@ -15,6 +15,7 @@
 // // Provides special handling for the first user.
 // // Returns a success response or an error.
 
+//use this code if we need to define error message in json format ;
 
 // export const signupUser = async (req: Request, res: Response): Promise<void> => {
 //     const { name, email, password } = req.body;
@@ -203,4 +204,55 @@
 //     } finally {
 //         await prismaClient.$disconnect(); // Changed `Prisma` to `prismaClient`
 //     }
+// };
+
+
+
+
+
+
+//use this code if we need to use builderror instead of apperror;
+
+
+// export const loginUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+//   const { email, password } = req.body;
+
+//   // Validate the input
+//   if (!email || !password) {
+//     return next(buildError(new Error('Email and password are required'))); // Pass error to next()
+//   }
+
+//   try {
+//     // Find the user by email (using email as a unique identifier)
+//     const user = await prisma.user.findUnique({
+//       where: { email: email },
+//     });
+
+//     if (!user) {
+//       return next(buildError(new Error('User not found'))); // Pass error to next()
+//     }
+
+//     // Compare the entered password with the stored hashed password
+//     const isPasswordValid = await bcrypt.compare(password, user.password);
+//     if (!isPasswordValid) {
+//       return next(buildError(new Error('Invalid password'))); // Pass error to next()
+//     }
+
+//     // Generate JWT token upon successful login
+//     const token = 'some-jwt-token'; // Replace with actual token creation logic
+
+//     // Send success response with token
+//     res.status(200).json({
+//       message: 'Login successful',
+//       user: {
+//         id: user.id,
+//         name: user.name,
+//         email: user.email,
+//       },
+//       token,
+//     });
+//   } catch (error) {
+//     // Pass any unexpected errors to the next middleware using buildError
+//     return next(buildError(error)); // Pass error to next()
+//   }
 // };

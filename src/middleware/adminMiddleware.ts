@@ -1,9 +1,9 @@
-// src/middleware/adminMiddleware.ts
-
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
-import dotenv from 'dotenv'
-dotenv.config()
+import dotenv from 'dotenv';
+import { AppError } from '../utils/appError'; // Import AppError
+
+dotenv.config();
 
 // Type for the decoded JWT payload
 interface CustomJwtPayload extends JwtPayload {
@@ -11,40 +11,33 @@ interface CustomJwtPayload extends JwtPayload {
 }
 
 // Admin middleware
-
 export const adminMiddleware = (req: Request, res: Response, next: NextFunction): void => {
-  let token : string | any
+  let token: string | any;
 
-
-
-  if(   req.headers.authorization &&    req.headers.authorization.startsWith('Bearer')){
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     token = req.headers.authorization?.split(' ')[1]; // Assuming Bearer token
-
-  }else{
+  } else {
     token = req.headers.authorization;
   }
-   
+
   if (!token) {
-    res.status(403).json({ message: 'No token provided' });
-    return; // Ensure we exit the function after sending the response
+    return next(new AppError('No token provided', 403)); // Pass error to next() instead of sending a response directly
   }
 
   try {
-    const decoded = jwt.verify(token,process.env.JWT_SECRET as string) as CustomJwtPayload;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as CustomJwtPayload;
 
-    console.log(decoded)
-    
+    console.log(decoded);
+
     if (decoded.role !== 'admin') {
-      res.status(403).json({ message: 'Forbidden' });
-      return; // Ensure we exit the function after sending the response
+      return next(new AppError('Forbidden', 403)); // Pass error to next() instead of sending a response directly
     }
 
     next(); // Proceed to the next middleware or route handler
   } catch (err) {
     if (err instanceof Error) {
-      res.status(401).json({ message: 'Invalid or expired token', error: err.message });
-      return; // Ensure we exit the function after sending the response
+      return next(new AppError('Invalid or expired token', 401)); // Pass error to next() instead of sending a response directly
     }
-    res.status(500).json({ message: 'Internal server error' });
+    return next(new AppError('Internal server error', 500)); // Pass error to next() instead of sending a response directly
   }
 };
