@@ -184,12 +184,14 @@ export const forgotPassword = async (req: Request, res: Response, next: NextFunc
             },
         });
 
-        // Create reset link
-        const url = await QRCode.toFile(path.join(__dirname, 'public', 'images', 'qr.png'), resetToken);
+        // Create the reset link
         const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
 
-        // Send the reset email
-        await sendResetPasswordEmail(user.email, url);
+        // Generate QR code image buffer
+        const qrCodeBuffer = await QRCode.toBuffer(resetLink, { type: 'png' });
+
+        // Send the reset email with the QR code attached
+        await sendResetPasswordEmail(user.email, resetLink, qrCodeBuffer);
 
         res.status(200).json({ message: 'Password reset link sent to email' });
     } catch (error) {

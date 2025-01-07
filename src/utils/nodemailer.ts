@@ -1,7 +1,8 @@
 import nodemailer from 'nodemailer';
 import { AppError } from './appError'; // Custom error class
+import QRCode from 'qrcode'; // Import the qrcode package
 
-export const sendResetPasswordEmail = async (email: string, resetLink: any): Promise<void> => {
+export const sendResetPasswordEmail = async (email: string, resetLink: string, qrCodeBuffer: Buffer): Promise<void> => {
     const emailUser = process.env.EMAIL_USER;
     const emailPassword = process.env.EMAIL_PASS;
 
@@ -21,12 +22,14 @@ export const sendResetPasswordEmail = async (email: string, resetLink: any): Pro
         from: emailUser,
         to: email,
         subject: 'Password Reset Request',
-        text: `You requested a password reset. Click the link below to reset your password:\n\n${resetLink}`,
-        attachment : [
-          {
-            filename: 'qr.png',
-          }
-        ]
+        text: `Hello,\n\nWe received a request to reset your password. Please use the link below to reset your password:\n\n${resetLink}\n\nFor your convenience, we've also included a QR code below. Simply scan it to reset your password.\n\nIf you didn't request a password reset, please ignore this email.`,
+        attachments: [
+            {
+                filename: 'qr.png',
+                content: qrCodeBuffer, // Attach the QR code buffer
+                encoding: 'base64',
+            },
+        ],
     };
 
     try {
