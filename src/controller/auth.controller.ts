@@ -5,7 +5,9 @@ import { createAccessToken } from "../jwt/token";
 import * as bcrypt from 'bcryptjs';
 import * as jwt from 'jsonwebtoken';
 import { sendResetPasswordEmail } from "../utils/nodemailer";
+import QRCode from 'qrcode'
 import { AppError } from '../utils/appError';
+import path from 'path'
 const prismaClient = new PrismaClient(); // Using lowercase 'prismaClient'
 
 //Validates the user's input.
@@ -79,8 +81,11 @@ export const signupUser = async (req: Request, res: Response, next: NextFunction
     }
 };
 
+
 console.log("hello");
 console.log(signupUser);
+
+
 
 export const loginUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { email, password } = req.body;
@@ -129,6 +134,8 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
 };
 
 console.log("hello")
+
+
 export const logoutUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         // Assuming you're using JWT stored in a cookie
@@ -144,60 +151,50 @@ export const logoutUser = async (req: Request, res: Response, next: NextFunction
     }
 };
 //ysko aalik baki xa code milauna
-export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
+export const forgotPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { email } = req.body;
 
     if (!email) {
-        res.status(400).json({ message: 'Email is required' });
-        return;
+        return next(new AppError('Email is required', 400));
     }
-
-    // Find user by email
-    const user = await prisma.user.findUnique({ where: { email } });
-
-    if (!user) {
-        res.status(404).json({ message: 'User not found' });
-        return;
-    }
-
-    // Check if JWT_SECRET and FRONTEND_URL are defined
-    const jwtSecret = process.env.JWT_SECRET;
-    const frontendUrl = process.env.FRONTEND_URL;
-
-    if (!jwtSecret || !frontendUrl) {
-        res.status(500).json({ message: 'Server misconfiguration: Missing environment variables.' });
-        return;
-    }
-
-    // Generate a reset token (valid for 15 minutes)
-    const resetToken = jwt.sign({ userId: user.id }, jwtSecret, {
-        expiresIn: '15m',
-    });
-
-    // Store token in the database (optional, but can be done for additional security)
-    await prisma.passwordReset.create({
-        data: {
-            userId: user.id,
-            token: resetToken,
-            expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes expiration
-        },
-    });
-
-    // Create reset link
-    const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
 
     try {
-        // Send the reset email
-        await sendResetPasswordEmail(user.email, resetLink);
-        res.status(200).json({ message: 'Password reset link sent to email' });
-    } catch (error: unknown) {
-        // TypeScript requires 'unknown' error type in catch
-        if (error instanceof Error) {
-            res.status(500).json({ message: 'Failed to send email', error: error.message });
-        } else {
-            res.status(500).json({ message: 'An unknown error occurred during email sending.' });
+        // Find user by email
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            return next(new AppError('User not found', 404));
         }
+
+        // Check for required environment variables
+        const jwtSecret = process.env.JWT_SECRET;
+        const frontendUrl = process.env.FRONTEND_URL;
+        if (!jwtSecret || !frontendUrl) {
+            return next(new AppError('Server misconfiguration: Missing environment variables', 500));
+        }
+
+        // Generate a reset token (valid for 15 minutes)
+        const resetToken = jwt.sign({ userId: user.id }, jwtSecret, { expiresIn: '15m' });
+
+        // Store token in the database (optional for additional security)
+        await prisma.passwordReset.create({
+            data: {
+                userId: user.id,
+                token: resetToken,
+                expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes expiration
+            },
+        });
+
+        // Create reset link
+        const url = await QRCode.toFile(path.join(__dirname, 'public', 'images', 'qr.png'), resetToken);
+        const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
+
+        // Send the reset email
+        await sendResetPasswordEmail(user.email, url);
+
+        res.status(200).json({ message: 'Password reset link sent to email' });
+    } catch (error) {
+        next(new AppError('Failed to process the password reset request', 500));
     } finally {
-        await prismaClient.$disconnect(); // Changed `Prisma` to `prismaClient`
+        await prisma.$disconnect(); // Ensure the database connection is closed
     }
 };

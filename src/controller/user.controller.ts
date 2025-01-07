@@ -145,10 +145,18 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
             return next(new AppError("User not found", 404));
         }
 
+        // Prepare update data
+        const updateData: any = { name, email }; // Initialize update data with name and email
+        if (password) {
+            // Hash the new password if provided
+            const hashedPassword = await bcrypt.hash(password, 12); // Use a salt of 12 rounds
+            updateData.password = hashedPassword;
+        }
+
         // Update the user
         const updatedUser = await prisma.user.update({
             where: { id: parseInt(id) },
-            data: { name, password, email },
+            data: updateData,
         });
 
         res.status(200).json({
@@ -157,10 +165,9 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
         });
     } catch (error: any) {
         // Pass the error to AppError and forward to errorHandler
-        return next(new AppError("Failed to update user", 500,));
+        return next(new AppError("Failed to update user", 500));
     }
 };
-
 
 export const deleteUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { email } = req.body;
