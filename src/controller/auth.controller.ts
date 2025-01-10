@@ -191,7 +191,7 @@ export const forgotPassword = async (req: Request, res: Response, next: NextFunc
         const qrCodeBuffer = await QRCode.toBuffer(resetLink, { type: 'png' });
 
         // Send the reset email with the QR code attached
-        await sendResetPasswordEmail(user.email, resetLink, qrCodeBuffer);
+        await sendResetPasswordEmail(user.email, resetLink);
 
         res.status(200).json({ message: 'Password reset link sent to email' });
     } catch (error) {
