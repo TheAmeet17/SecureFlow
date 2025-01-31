@@ -20,12 +20,7 @@ const prismaClient = new PrismaClient(); // Using lowercase 'prismaClient'
 export const signupUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const { name, email, password } = req.body;
 
-    // Validate the input
-    if (!name || !email || !password) {
-        // Instead of directly returning a response, pass an error to next()
-        return next(new AppError('Name, email, and password are required.', 400));
-    }
-
+   
     try {
         // Hash the password
         const hashedPassword = await bcrypt.hash(password, 10);

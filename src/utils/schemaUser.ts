@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 // User Validation Schema
-export const createUserSchema = z.object({
+export const  createUserSchema = z.object({
   // Basic user information
   name: z
     .string()

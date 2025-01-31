@@ -14,7 +14,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use('/api',[userRouter,authRouter])
-app.use(router);
+//app.use(router);
 
 app.use(errorHandler);
 
